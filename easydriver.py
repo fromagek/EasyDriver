@@ -6,7 +6,7 @@ import time, sys
 
 
 class easydriver(object):
-    def __init__(self,pin_step=0,delay=0.1,pin_direction=0,pin_ms1=0,pin_ms2=0,pin_ms3=0,pin_sleep=0,pin_enable=0,pin_reset=0,name="Stepper"):
+    def __init__(self,pin_step=0,delay=0.1,pin_direction=0,pin_ms1=0,pin_ms2=0,pin_ms3=0,pin_sleep=0,pin_enable=0,pin_reset=0,name="Stepper",pin_left_end=0,pin_right_end=0):
         self.pin_step = pin_step
         self.delay = delay / 2
         self.pin_direction = pin_direction
@@ -17,7 +17,8 @@ class easydriver(object):
         self.pin_enable = pin_enable
         self.pin_reset = pin_reset
         self.name = name
-
+	self.pin_left_end = pin_left_end 
+	self.pin_right_end = pin_right_end
         gpio.setmode(gpio.BCM)
         gpio.setwarnings(False)
 
@@ -100,5 +101,7 @@ class easydriver(object):
     def set_delay(self, delay):
         self.delay = delay / 2
 
+    def find_end_stop(self):
+	pass
     def finish(self):
         gpio.cleanup()
