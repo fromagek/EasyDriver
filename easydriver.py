@@ -150,5 +150,4 @@ class easydriver(object):
     def finish(self):
     	if self.pin_sleep!=0:
     		self.sleep()
-    		print('sleep')
         gpio.cleanup()
