@@ -3,13 +3,17 @@
 
 import RPi.GPIO as gpio
 import time, sys
+from switch import Switch
 
 
 class easydriver(object):
-    def __init__(self,pin_step=0,delay=0.1,pin_direction=0,pin_ms1=0,pin_ms2=0,pin_ms3=0,pin_sleep=0,pin_enable=0,pin_reset=0,name="Stepper",pin_left_end=0,pin_right_end=0):
+    def __init__(self,pin_step=0,delay=0.1,pin_direction=0,pin_ms1=0,pin_ms2=0,pin_ms3=0,\
+    			 pin_sleep=0,pin_enable=0,pin_reset=0,name="Stepper",pin_left_end=0,pin_right_end=0):
         self.pin_step = pin_step
         self.delay = delay / 2
+        self.abs_position=0
         self.pin_direction = pin_direction
+        self.direction=True
         self.pin_microstep_1 = pin_ms1
         self.pin_microstep_2 = pin_ms2
         self.pin_microstep_3 = pin_ms3
@@ -17,8 +21,11 @@ class easydriver(object):
         self.pin_enable = pin_enable
         self.pin_reset = pin_reset
         self.name = name
-	self.pin_left_end = pin_left_end 
-	self.pin_right_end = pin_right_end
+        self.pin_left_end = pin_left_end
+        self.pin_right_end = pin_right_end
+        self.left_switch = Switch(pin_left_end)
+        self.right_switch = Switch(pin_right_end)
+	
         gpio.setmode(gpio.BCM)
         gpio.setwarnings(False)
 
@@ -46,15 +53,20 @@ class easydriver(object):
             gpio.setup(self.pin_reset, gpio.OUT)
             gpio.output(self.pin_reset,True)
 
-
     def step(self):
+    	self.wake()
         gpio.output(self.pin_step,True)
         time.sleep(self.delay)
         gpio.output(self.pin_step,False)
         time.sleep(self.delay)
-
+        if not self.direction:
+        	self.add_to_abs_pos(1)
+        else:
+        	self.add_to_abs_pos(-1)
+        	
     def set_direction(self,direction):
-        gpio.output(self.pin_direction,direction)
+    	self.direction=direction
+        gpio.output(self.pin_direction,self.direction)
 
     def set_full_step(self):
         gpio.output(self.pin_microstep_1,False)
@@ -80,7 +92,13 @@ class easydriver(object):
         gpio.output(self.pin_microstep_1,True)
         gpio.output(self.pin_microstep_2,True)
         gpio.output(self.pin_microstep_3,True)
-
+        
+    def add_to_abs_pos(self,delta):
+    	self.abs_position+=delta
+    	
+    def set_abs_pos_zero(self):
+    	self.abs_position=0
+    	
     def sleep(self):
         gpio.output(self.pin_sleep,False)
 
@@ -100,8 +118,18 @@ class easydriver(object):
 
     def set_delay(self, delay):
         self.delay = delay / 2
-
-    def find_end_stop(self):
-	pass
+        
+    def left_switch_status(self):
+		return self.left_switch.switch_status()
+		
+    def find_left_end_stop(self):
+    	self.set_direction(False)
+    	while not (self.left_switch_status()):
+			self.step()
+    	self.set_abs_pos_zero()
+	
     def finish(self):
+    	if self.pin_sleep!=0:
+    		self.sleep()
+    		print('sleep')
         gpio.cleanup()
