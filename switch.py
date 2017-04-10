@@ -12,3 +12,4 @@ class Switch(object):
 
     def switch_status(self):
         return gpio.input(self.pin_switch)
+       

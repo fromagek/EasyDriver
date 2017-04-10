@@ -11,7 +11,7 @@ class easydriver(object):
     			 pin_sleep=0,pin_enable=0,pin_reset=0,name="Stepper",pin_left_end=0,pin_right_end=0):
         self.pin_step = pin_step
         self.delay = delay / 2
-        self.abs_position=0
+        self.abs_position=self.read_abs_position()
         self.pin_direction = pin_direction
         self.direction=True
         self.pin_microstep_1 = pin_ms1
@@ -25,6 +25,8 @@ class easydriver(object):
         self.pin_right_end = pin_right_end
         self.left_switch = Switch(pin_left_end)
         self.right_switch = Switch(pin_right_end)
+        self.left_limit=0
+        self.right_limit=100
 	
         gpio.setmode(gpio.BCM)
         gpio.setwarnings(False)
@@ -52,17 +54,20 @@ class easydriver(object):
         if self.pin_reset > 0:
             gpio.setup(self.pin_reset, gpio.OUT)
             gpio.output(self.pin_reset,True)
+        self.sleep()
 
     def step(self):
-    	self.wake()
-        gpio.output(self.pin_step,True)
-        time.sleep(self.delay)
-        gpio.output(self.pin_step,False)
-        time.sleep(self.delay)
-        if not self.direction:
-        	self.add_to_abs_pos(1)
-        else:
-        	self.add_to_abs_pos(-1)
+    	if self.left_limit<self.abs_position and self.direction or self.abs_position<self.right_limit and not self.direction:
+	    	self.wake()
+	        gpio.output(self.pin_step,True)
+	        time.sleep(self.delay)
+	        gpio.output(self.pin_step,False)
+	        time.sleep(self.delay)
+	        if not self.direction:
+	        	self.add_to_abs_position(1)
+	        else:
+	        	self.add_to_abs_position(-1)
+     	print(self.abs_position)
         	
     def set_direction(self,direction):
     	self.direction=direction
@@ -93,11 +98,13 @@ class easydriver(object):
         gpio.output(self.pin_microstep_2,True)
         gpio.output(self.pin_microstep_3,True)
         
-    def add_to_abs_pos(self,delta):
+    def add_to_abs_position(self,delta):
     	self.abs_position+=delta
+    	self.write_abs_position(str(self.abs_position))
     	
-    def set_abs_pos_zero(self):
+    def set_abs_position_zero(self):
     	self.abs_position=0
+    	self.write_abs_position(self.abs_position)
     	
     def sleep(self):
         gpio.output(self.pin_sleep,False)
@@ -119,6 +126,18 @@ class easydriver(object):
     def set_delay(self, delay):
         self.delay = delay / 2
         
+    def read_abs_position(self):
+    	file=open('abs_pos.txt','r')
+    	self.abs_position=eval(file.readline())
+    	file.close()
+    	return self.abs_position
+        
+    def write_abs_position(self, abs_pos):
+    	file=open('abs_pos.txt','w')
+    	file.write(str(abs_pos))
+    	file.close()
+    	self.abs_position=int(abs_pos)
+        
     def left_switch_status(self):
 		return self.left_switch.switch_status()
 		
@@ -126,7 +145,7 @@ class easydriver(object):
     	self.set_direction(False)
     	while not (self.left_switch_status()):
 			self.step()
-    	self.set_abs_pos_zero()
+    	self.set_abs_position_zero()
 	
     def finish(self):
     	if self.pin_sleep!=0:
